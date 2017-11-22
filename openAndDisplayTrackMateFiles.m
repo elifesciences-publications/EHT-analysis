@@ -5,7 +5,7 @@ function openAndDisplayTrackMateFiles()
 clear
 close all
 
-filePathTracks = uipickfiles('num',1 ,'Prompt', 'Please select the path to the tracks');
+% filePathTracks = uipickfiles('num',1 ,'Prompt', 'Please select the path to the tracks');
 % filePathTracks = ...
 %     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2_trackExport.xml'};
 
@@ -18,31 +18,40 @@ smoothFact = [1 5 11]; % to smooth the openings display and analyses
 
 
 % Import tracks
-clipZ = true;
-scaleT = false;
-[~, md] = importTrackMateTracks(filePathTracks{1}, clipZ, scaleT);
-
-% Until we figure out why there is an issue with the default time interval
-temp = inputdlg('define temporal step','define temporal step (in sec)',1,{num2str(md.frameInterval)});
-md.frameInterval = str2num(temp{1});
+% clipZ = true;
+% scaleT = false;
+% [~, md] = importTrackMateTracks(filePathTracks{1}, clipZ, scaleT);
 
 % Import the data table associated
 [ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{1} );
 edge_map = trackmateEdges( filePathSpotFeat{1} );
 track_names = edge_map.keys;
 
-n_tracks = length(edge_map);
+n_tracks = numel(track_names);
 if n_tracks>2
     fprintf('WARNING: %d trajectories detected. Stopping the analysis.\n',...
         n_tracks);
     return
 end
 
+% Double check some parameters of the acquisition
+prompt = {'Enter frame interval:', 'Enter time unit:', 'Enter space unit:'};
+dlg_title = 'Check inputs';
+num_lines = 1;
+defaultans = {'2','min','micron'};
+answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
+
+md.frameInterval = str2double(answer{1});
+md.timeUnits = answer{2};
+md.spaceUnits = answer{3};
+
+
 
 % Recreate the tracks by spot ID 
 track_spot_IDs = recreate_IDs(n_tracks, track_names, edge_map);
 
 % Reshape tracks into simpleTracks for simple handling
+clipZ = true;
 simpleTracks = reshapeTracks(n_tracks, track_spot_IDs,...
     spot_ID_map, spot_table, clipZ, md);
 
@@ -209,10 +218,9 @@ for s = 1 : n_tracks
     plot( x, y, '.-' , 'DisplayName', track_name)
 end
 
-units = md.spaceUnits;
 title('Trajectories of the extremities');
-ylabel( [ 'Y (' units ')' ] )
-xlabel( [ 'X (' units ')' ] )
+ylabel( [ 'Y (' md.spaceUnits ')' ] )
+xlabel( [ 'X (' md.spaceUnits ')' ] )
 axis equal
 legend toggle
 end
