@@ -5,22 +5,12 @@ function openAndDisplayTrackMateFiles()
 clear
 close all
 
-% filePathTracks = uipickfiles('num',1 ,'Prompt', 'Please select the path to the tracks');
-% filePathTracks = ...
-%     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2_trackExport.xml'};
-
 filePathSpotFeat = uipickfiles('num',1 ,'Prompt', 'Please select the path to the whole dataset');
 % filePathSpotFeat = ...
 %     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
 
 % Use a smoothing factor in the display
 smoothFact = [1 5 11]; % to smooth the openings display and analyses
-
-
-% Import tracks
-% clipZ = true;
-% scaleT = false;
-% [~, md] = importTrackMateTracks(filePathTracks{1}, clipZ, scaleT);
 
 % Import the data table associated
 [ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{1} );
@@ -95,7 +85,8 @@ subplot(2,2,3);
 dispOpeningSpeed(openingRTspeed, timeCourse, md, legs);
 
 subplot(2,2,4);
-dispOpeningHisto(openingRTspeed, md, legs);
+nbins = 20;
+dispOpeningHisto(openingRTspeed, md, legs, nbins);
 
 %% Display the tracks intensities along time
 figure;
@@ -282,10 +273,10 @@ legend(legs)
 
 end
 
-function dispOpeningHisto(openingRTspeed, md, legs)
+function dispOpeningHisto(openingRTspeed, md, legs, nbins)
 % Display of the opening speeds as an histogram
 
-nbins = 20;
+lineColors = lines(numel(legs));
 
 minmax = min(min(openingRTspeed)) : ...
     abs(min(min(openingRTspeed))/max(max(openingRTspeed)))/nbins : ...
@@ -296,7 +287,12 @@ h = zeros(numel(minmax)-1,numel(legs));
 for smoothing = 1:numel(legs)
     h(:,smoothing) = histcounts(openingRTspeed(:,smoothing),minmax);
 end
-bar(minmax(1:end-1),h);
+histoData = bar(minmax(1:end-1),h);
+
+for pop = 1:numel(legs)
+   histoData(pop).FaceColor = lineColors(pop,:);
+   histoData(pop).EdgeColor = 'None';
+end
 
 title('Distribution of the closing speeds');
 xlabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
