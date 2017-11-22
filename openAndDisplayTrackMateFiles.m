@@ -153,10 +153,12 @@ for tk = 1 : n_tracks % for each track
             emptyFrameTable = [emptyFrameTable ; emptyLine];
         end
     end
-    % Rename the fields of the emptyFrameTable
-    emptyFrameTable.Properties.VariableNames = TableFields;
-    % Merge tables of empty and filled frames
-    simpleTracksRT{tk} = [simpleTracks{tk};emptyFrameTable];
+    if ~isempty(emptyFrameTable)    
+        % Rename the fields of the emptyFrameTable
+        emptyFrameTable.Properties.VariableNames = TableFields;
+        % Merge tables of empty and filled frames
+        simpleTracksRT{tk} = [simpleTracks{tk};emptyFrameTable];
+    end
     % Resort the table based on frames
     simpleTracksRT{tk} = sortrows(simpleTracksRT{tk} ,{'frame'},{'ascend'});
 end
