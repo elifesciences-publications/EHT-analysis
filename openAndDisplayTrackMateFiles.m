@@ -20,28 +20,24 @@ smoothFact = [1 5 11]; % to smooth the openings display and analyses
 % Import tracks
 clipZ = true;
 scaleT = false;
-[tracks, md] = importTrackMateTracks(filePathTracks{1}, clipZ, scaleT);
-
-n_tracks = numel(tracks);
+[~, md] = importTrackMateTracks(filePathTracks{1}, clipZ, scaleT);
 
 % Until we figure out why there is an issue with the default time interval
 temp = inputdlg('define temporal step','define temporal step (in sec)',1,{num2str(md.frameInterval)});
 md.frameInterval = str2num(temp{1});
 
-
-if n_tracks>2
-    fprintf('WARNING: %d trajectories detected. Assuming the first 2 are the extremities.\n',...
-        n_tracks);
-    temp{1} = tracks{1}; 
-    temp{2} = tracks{2};
-    tracks = temp;
-    n_tracks = numel(tracks);
-end
-
 % Import the data table associated
 [ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{1} );
 edge_map = trackmateEdges( filePathSpotFeat{1} );
 track_names = edge_map.keys;
+
+n_tracks = length(edge_map);
+if n_tracks>2
+    fprintf('WARNING: %d trajectories detected. Stopping the analysis.\n',...
+        n_tracks);
+    return
+end
+
 
 % Recreate the tracks by spot ID 
 track_spot_IDs = recreate_IDs(n_tracks, track_names, edge_map);
