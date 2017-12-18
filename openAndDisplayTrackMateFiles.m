@@ -1,4 +1,4 @@
-% version 171205
+% version 171218
 
 function openAndDisplayTrackMateFiles()
 
@@ -107,7 +107,10 @@ subplot(2,2,4); % Median intensity
 dispIntensities(n_tracks, timeCourse, simpleTracksRT, 'medianInt',...
     'Median intensity', track_names, md);
 
+%% Display overlayed closing speed and closing distance
+figure;
 
+dispOverlayDistVsSpeed(timeCourse, openingRT, openingRTspeed);
     
 end
 
@@ -251,7 +254,6 @@ opening(opening==0) = nan;
 
 end
 
-
 function dispOpeningDia(openingRT, timeCourse, md, legs)
 % Display the size of the surface diameter (between the extremities)
 
@@ -301,6 +303,17 @@ xlabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
 ylabel('N'); 
 legend(legs);
 legend boxoff;
+
+end
+
+function dispOverlayDistVsSpeed(timeCourse, openingRT, openingRTspeed)
+% Display overlayed closing speed and closing distance
+
+yyaxis left
+plot(timeCourse,openingRT);
+
+yyaxis right
+plot(timeCourse,openingRTspeed);
 
 end
 
