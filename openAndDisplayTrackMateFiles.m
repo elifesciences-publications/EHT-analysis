@@ -8,6 +8,8 @@ close all
 filePathSpotFeat = uipickfiles('num',1 ,'Prompt', 'Please select the path to the whole dataset');
 % filePathSpotFeat = ...
 %     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
+[path,fileName,~] = fileparts(filePathSpotFeat{1});
+
 
 % Use a smoothing factor in the display => Always keep 1 as the first value
 % to keep the raw data
@@ -92,6 +94,9 @@ subplot(2,2,4);
 nbins = 20;
 dispOpeningHisto(openingRTspeed, md, legs, nbins);
 
+saveas(gcf,sprintf('%s_morphoAnalysis',...
+    [path, filesep, fileName]));
+
 %% Display the tracks intensities along time
 figure;
 
@@ -111,10 +116,16 @@ subplot(2,2,4); % Median intensity
 dispIntensities(n_tracks, timeCourse, simpleTracksRT, 'medianInt',...
     'Median intensity', track_names, md);
 
+saveas(gcf,sprintf('%s_fluoAnalysis',...
+    [path, filesep, fileName]));
+
 %% Display overlayed closing speed and closing distance
 figure;
 
 dispOverlayDistVsSpeed(timeCourse, openingRT, openingRTspeed);
+
+% saveas(gcf,sprintf('%s_originalOverlay',...
+%     [path, filesep, fileName], smoothFactAdv));
     
 %% Display overlayed closing speed and closing distance for advanced filtering
 
@@ -123,11 +134,12 @@ figure;
 dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, md);
 
 tempFig = gcf;
-saveas(tempFig,sprintf('overlayAdvFiltering_%ddt', smoothFactAdv));
-% saveas(gcf,sprintf('overlayAdvFiltering_%ddt.png', smoothFactAdv));
+saveas(tempFig,sprintf('%s_overlayAdvFiltering_%ddt',...
+    [path, filesep, fileName], smoothFactAdv));
+% saveas(gcf,sprintf('%s_overlayAdvFiltering_%ddt.png',[path, filesep, fileName], smoothFactAdv));
 set(tempFig,'PaperOrientation','landscape');
-print(tempFig, '-dpdf', sprintf('overlayAdvFiltering_%ddt.pdf', smoothFactAdv));
-
+print(tempFig, '-fillpage', '-dpdf', sprintf('%s_overlayAdvFiltering_%ddt.pdf',...
+    [path, filesep, fileName], smoothFactAdv));
 
 end
 
