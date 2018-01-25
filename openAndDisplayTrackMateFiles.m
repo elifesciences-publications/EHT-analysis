@@ -1,4 +1,4 @@
-% version 171218
+% version 180125 v1.2
 
 function openAndDisplayTrackMateFiles()
 
@@ -9,8 +9,10 @@ filePathSpotFeat = uipickfiles('num',1 ,'Prompt', 'Please select the path to the
 % filePathSpotFeat = ...
 %     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
 
-% Use a smoothing factor in the display
-smoothFact = [1 5 11]; % to smooth the openings display and analyses
+% Use a smoothing factor in the display => Always keep 1 as the first value
+% to keep the raw data
+smoothFact = [1 5 7 9 11 13]; % to smooth the openings display and analyses
+smoothFactAdv = 11; % to apply and advanced smoothing
 
 % Import the data table associated
 [ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{1} );
@@ -35,8 +37,6 @@ md.frameInterval = str2double(answer{1});
 md.timeUnits = answer{2};
 md.spaceUnits = answer{3};
 
-
-
 % Recreate the tracks by spot ID 
 track_spot_IDs = recreate_IDs(n_tracks, track_names, edge_map);
 
@@ -58,6 +58,10 @@ openingRT = InterExtremDist(simpleTracksRT,smoothFact);
 
 % Calculate the opening change
 openingRTspeed = [-diff(openingRT) ; NaN(1,numel(smoothFact))]/md.frameInterval;
+
+% Calculate advanced filtering
+openingRTadv = advancedFilter(simpleTracksRT, smoothFactAdv, md);
+% => first field = distance ; second field = speed;
 
 % Set timecourse
 timeCourse = simpleTracksRT{1}.time;
@@ -112,6 +116,19 @@ figure;
 
 dispOverlayDistVsSpeed(timeCourse, openingRT, openingRTspeed);
     
+%% Display overlayed closing speed and closing distance for advanced filtering
+
+figure;
+
+dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, md);
+
+tempFig = gcf;
+saveas(tempFig,sprintf('overlayAdvFiltering_%ddt', smoothFactAdv));
+% saveas(gcf,sprintf('overlayAdvFiltering_%ddt.png', smoothFactAdv));
+set(tempFig,'PaperOrientation','landscape');
+print(tempFig, '-dpdf', sprintf('overlayAdvFiltering_%ddt.pdf', smoothFactAdv));
+
+
 end
 
 function dispIntensities(n_tracks, timeCourse, simpleTracksRT, fieldToPlot,...
@@ -127,9 +144,6 @@ xlabel( ['Time (' md.timeUnits ')'] )
 ylabel(varName);
 legend(track_names, 'Location', 'eastoutside');
 end
-
-
-
 
 function [simpleTracksRT, maxTime] = rtTracks(n_tracks, simpleTracks, md)
 % Create and pad with nan the empty positions
@@ -202,7 +216,6 @@ end
 
 end
 
-
 function dispTracks(n_tracks, simpleTracksRT, track_names, md)
 % Display the tracks of the 2 extremities (2D only for the moment)
 hold on
@@ -232,6 +245,32 @@ for s = 1 : n_tracks
         edge_table.SPOT_SOURCE_ID...
         edge_table.SPOT_TARGET_ID] );
 end
+end
+
+function openingRTadv = advancedFilter(simpleTracksRT, smoothFactAdv, md)
+
+% Calculate distance with every filters
+diam = InterExtremDist(simpleTracksRT,[1 smoothFactAdv]); % => no smooth and single smooth
+diam(:,3) = smooth(diam(:,2),smoothFactAdv); % => 2 smoothing steps
+
+diam = diam .* ~isnan(diam(:,1));
+diam(diam==0) = nan;
+
+% Calculate speed with every filters
+speed = ([-diff(diam) ; NaN(1,size(diam,2))]/md.frameInterval);
+
+% merge into main structure
+openingRTadv.distance = diam;
+openingRTadv.speed = speed;
+
+% Prepape legends
+openingRTadv.dLegend = {'no smooth diameter',...
+    sprintf('diameter smoothed once (%ddt)',smoothFactAdv-1),...
+    sprintf('diameter smoothed twice (%ddt)',smoothFactAdv-1)};
+openingRTadv.sLegend = {'no smooth speed',...
+    sprintf('speed smoothed once (%ddt)',smoothFactAdv-1),...
+    sprintf('speed smoothed twice (%ddt)',smoothFactAdv-1)};
+
 end
 
 function opening = InterExtremDist(simpleTracksRT,smoothFact)
@@ -316,6 +355,27 @@ yyaxis right
 plot(timeCourse,openingRTspeed);
 
 end
+
+function dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, md)
+% Display overlayed closing speed and closing distance for advanced filtering
+
+hold on
+
+yyaxis left
+plot(timeCourse,openingRTadv.distance);
+ylabel( sprintf('Diameter (%s)', md.spaceUnits) );
+
+yyaxis right
+plot(timeCourse,openingRTadv.speed);
+ylabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
+
+title(sprintf('Advanced filtering (twice over %ddt)',smoothFactAdv));
+xlabel( sprintf('Time (%s)', md.timeUnits) ); 
+
+legend([openingRTadv.dLegend, openingRTadv.sLegend],'Location','EastOutside')
+
+end
+
 
 
 
