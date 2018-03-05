@@ -13,8 +13,8 @@ filePathSpotFeat = uipickfiles('num',1 ,'Prompt', 'Please select the path to the
 
 % Use a smoothing factor in the display => Always keep 1 as the first value
 % to keep the raw data
-smoothFact = [1 5 7 9 11 13]; % to smooth the openings display and analyses
-smoothFactAdv = 11; % to apply and advanced smoothing
+smoothFact = [1 5 11]; % to smooth the openings display and analyses
+smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
 
 % Import the data table associated
 [ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{1} );
@@ -381,7 +381,8 @@ yyaxis right
 plot(timeCourse,openingRTadv.speed);
 ylabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
 
-title(sprintf('Advanced filtering (twice over %ddt)',smoothFactAdv));
+title(sprintf('Advanced filtering (twice over %ddt <=> %0.1fmin)',...
+    smoothFactAdv,smoothFactAdv*md.frameInterval));
 xlabel( sprintf('Time (%s)', md.timeUnits) ); 
 
 legend([openingRTadv.dLegend, openingRTadv.sLegend],'Location','EastOutside')
