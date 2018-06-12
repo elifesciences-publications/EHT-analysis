@@ -1,14 +1,31 @@
-% version 180125 v1.2
+%{ 
+
+Tracking of A-P luminal distance 
+Input is the xml output of the trackMate plugin in Fiji. It expects only 2
+tracks of the 2 extremities.
+
+version 180605 v1.3
+- saves the output of the trajectories into a .mat file
+
+S. Herbert sherbert@pasteur.fr 
+
+%}
+
+
 
 function openAndDisplayTrackMateFiles()
 
 clear
-close all
+% close all
+
+% PARAMS
+PARAMS.scriptVersion = 'v1.3';
 
 filePathSpotFeat = uipickfiles('num',1 ,'Prompt', 'Please select the path to the whole dataset');
 % filePathSpotFeat = ...
 %     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
 [path,fileName,~] = fileparts(filePathSpotFeat{1});
+PARAMS.fileName = fileName;
 
 
 % Use a smoothing factor in the display => Always keep 1 as the first value
@@ -77,6 +94,9 @@ for smoothing = 1: numel(smoothFact)
     end
 end
 
+
+
+
 %% tracks and surface size
 % Display the distance between the 2 extremities and associate tracks
 figure;
@@ -120,12 +140,11 @@ saveas(gcf,sprintf('%s_fluoAnalysis',...
     [path, filesep, fileName]));
 
 %% Display overlayed closing speed and closing distance
-figure;
-
-dispOverlayDistVsSpeed(timeCourse, openingRT, openingRTspeed);
-
-% saveas(gcf,sprintf('%s_originalOverlay',...
-%     [path, filesep, fileName], smoothFactAdv));
+% figure;
+%
+% dispOverlayDistVsSpeed(timeCourse, openingRT, openingRTspeed);
+%
+% saveas(gcf,sprintf('%s_originalOverlay', [path, filesep, fileName], smoothFactAdv));
     
 %% Display overlayed closing speed and closing distance for advanced filtering
 
@@ -138,8 +157,16 @@ saveas(tempFig,sprintf('%s_overlayAdvFiltering_%ddt',...
     [path, filesep, fileName], smoothFactAdv));
 % saveas(gcf,sprintf('%s_overlayAdvFiltering_%ddt.png',[path, filesep, fileName], smoothFactAdv));
 set(tempFig,'PaperOrientation','landscape');
-print(tempFig, '-fillpage', '-dpdf', sprintf('%s_overlayAdvFiltering_%ddt.pdf',...
-    [path, filesep, fileName], smoothFactAdv));
+print(tempFig, '-fillpage', '-dpdf','tempName')%, sprintf('%s_overlayAdvFiltering_%ddt.pdf',...
+%     [path, filesep, fileName], smoothFactAdv));
+
+
+% Create output structure
+outputAnalysis.dataTable = table(timeCourse, openingRTadv.distance(:,3), openingRTadv.speed(:,3));
+outputAnalysis.dataTable.Properties.VariableNames = {'timeCourse' 'distanceSmoothed' 'speedSmoothed'};
+outputAnalysis.PARAMS = PARAMS;
+
+save('outputAnalysis','outputAnalysis');
 
 end
 
