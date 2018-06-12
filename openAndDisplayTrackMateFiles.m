@@ -7,6 +7,7 @@ tracks of the 2 extremities.
 version 180605 v1.3
 - saves the output of the trajectories into a .mat file
 
+version 180612 v1.3.1
 S. Herbert sherbert@pasteur.fr 
 
 %}
@@ -32,6 +33,7 @@ PARAMS.fileName = fileName;
 % to keep the raw data
 smoothFact = [1 5 11]; % to smooth the openings display and analyses
 smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
+
 
 % Import the data table associated
 [ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{1} );
@@ -97,6 +99,12 @@ end
 
 
 
+%% Automated quantification of the cycle number
+% Based on the published stepfit method
+localMinIdx = findAndDisplayMin(openingRTadv.speed(:,3), md, PARAMS);
+saveas(gcf,sprintf('%s_fluoAnalysis',...
+    [path, filesep, fileName]));
+
 %% tracks and surface size
 % Display the distance between the 2 extremities and associate tracks
 figure;
@@ -161,14 +169,40 @@ print(tempFig, '-fillpage', '-dpdf','tempName')%, sprintf('%s_overlayAdvFilterin
 %     [path, filesep, fileName], smoothFactAdv));
 
 
-% Create output structure
-outputAnalysis.dataTable = table(timeCourse, openingRTadv.distance(:,3), openingRTadv.speed(:,3));
-outputAnalysis.dataTable.Properties.VariableNames = {'timeCourse' 'distanceSmoothed' 'speedSmoothed'};
+%% Create output structure
+outputAnalysis.dataTable = table(timeCourse, openingRTadv.distance(:,3), openingRTadv.speed(:,3), localMinIdx);
+outputAnalysis.dataTable.Properties.VariableNames = {'timeCourse' 'distanceSmoothed' 'speedSmoothed' 'localMinsP'};
 outputAnalysis.PARAMS = PARAMS;
 
 save('outputAnalysis','outputAnalysis');
 
 end
+
+
+function localMinIdx = findAndDisplayMin(speed, md, PARAMS)
+% Estimate automatically where the minima are in the speed curve
+
+[~, localMinIdx] = islocalmin(speed);
+% [~, localMinIdx] = islocalmin(speed,'MinProminence',0.05); % use a
+% treshold on minima prominence
+
+localColors = lines(2);
+
+% display minima
+figure
+hold on
+h{1} = plot(timeCourse, speed, '.-', 'LineWidth',1 , 'Color', localColors(1,:)); % speed curve
+h{2} = plot(timeCourse(localMinIdx~=0),speed(localMinIdx~=0)-0.01, 'v', 'MarkerFaceColor', [0,0.5,0], 'MarkerEdgeColor', [0,0.5,0]); % minima on the speed curve
+h{3} = plot(timeCourse(localMinIdx~=0),localMinIdx(localMinIdx~=0),'v', 'MarkerFaceColor', localColors(2,:), 'MarkerEdgeColor', localColors(2,:)); % prominence of the minima
+grid on
+title(sprintf('Closing speed (%s)', PARAMS.fileName));
+ylabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
+xlabel( [ 'Time (' md.timeUnits ')' ] );
+legend({'Speed', 'Local minimum', 'Prominence'});
+
+end
+
+
 
 function dispIntensities(n_tracks, timeCourse, simpleTracksRT, fieldToPlot,...
     varName, track_names, md)
