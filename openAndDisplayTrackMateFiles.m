@@ -25,9 +25,10 @@ PARAMS.scriptVersion = 'v1.3';
 filePathSpotFeat = uipickfiles('num',1 ,'Prompt', 'Please select the path to the whole dataset');
 % filePathSpotFeat = ...
 %     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
-[path,fileName,~] = fileparts(filePathSpotFeat{1});
-PARAMS.fileName = fileName;
-
+[path,PARAMS.fileName,~] = fileparts(filePathSpotFeat{1});
+PARAMS.fullPath = [path filesep PARAMS.fileName];
+mkdir(PARAMS.fullPath);
+cd(PARAMS.fullPath);
 
 % Use a smoothing factor in the display => Always keep 1 as the first value
 % to keep the raw data
@@ -102,8 +103,10 @@ end
 %% Automated quantification of the cycle number
 % Based on the published stepfit method
 localMinIdx = findAndDisplayMin(timeCourse, openingRTadv.speed(:,3), PARAMS);
-saveas(gcf,sprintf('%s_fluoAnalysis',...
-    [path, filesep, fileName]));
+saveas(gcf,sprintf('%s_localMinsP',...
+    [PARAMS.fullPath, filesep, PARAMS.fileName]));
+saveas(gcf,sprintf('%s_localMinsP.png',...
+    [PARAMS.fullPath, filesep, PARAMS.fileName]));
 
 %% tracks and surface size
 % Display the distance between the 2 extremities and associate tracks
@@ -123,7 +126,7 @@ nbins = 20;
 dispOpeningHisto(openingRTspeed, PARAMS, legs, nbins);
 
 saveas(gcf,sprintf('%s_morphoAnalysis',...
-    [path, filesep, fileName]));
+    [PARAMS.fullPath, filesep, PARAMS.fileName]));
 
 %% Display the tracks intensities along time
 figure;
@@ -145,14 +148,14 @@ dispIntensities(n_tracks, timeCourse, simpleTracksRT, 'medianInt',...
     'Median intensity', track_names, PARAMS);
 
 saveas(gcf,sprintf('%s_fluoAnalysis',...
-    [path, filesep, fileName]));
+    [PARAMS.fullPath, filesep, PARAMS.fileName]));
 
 %% Display overlayed closing speed and closing distance
 % figure;
 %
 % dispOverlayDistVsSpeed(timeCourse, openingRT, openingRTspeed);
 %
-% saveas(gcf,sprintf('%s_originalOverlay', [path, filesep, fileName], smoothFactAdv));
+% saveas(gcf,sprintf('%s_originalOverlay', [path, filesep, PARAMS.fileName], smoothFactAdv));
     
 %% Display overlayed closing speed and closing distance for advanced filtering
 
@@ -162,11 +165,11 @@ dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, PARAMS);
 
 tempFig = gcf;
 saveas(tempFig,sprintf('%s_overlayAdvFiltering_%ddt',...
-    [path, filesep, fileName], smoothFactAdv));
-% saveas(gcf,sprintf('%s_overlayAdvFiltering_%ddt.png',[path, filesep, fileName], smoothFactAdv));
-set(tempFig,'PaperOrientation','landscape');
-print(tempFig, '-fillpage', '-dpdf','tempName')%, sprintf('%s_overlayAdvFiltering_%ddt.pdf',...
-%     [path, filesep, fileName], smoothFactAdv));
+    [PARAMS.fullPath, filesep, PARAMS.fileName], smoothFactAdv));
+% saveas(gcf,sprintf('%s_overlayAdvFiltering_%ddt.png',[path, filesep, PARAMS.fileName], smoothFactAdv));
+% set(tempFig,'PaperOrientation','landscape');
+% print(tempFig, '-fillpage', '-dpdf','tempName')%, sprintf('%s_overlayAdvFiltering_%ddt.pdf',...
+% %     [path, filesep, PARAMS.fileName], smoothFactAdv));
 
 
 %% Create output structure
