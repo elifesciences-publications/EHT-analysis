@@ -32,8 +32,8 @@ cd(PARAMS.fullPath);
 
 % Use a smoothing factor in the display => Always keep 1 as the first value
 % to keep the raw data
-smoothFact = [1 5 11]; % to smooth the openings display and analyses
-smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
+PARAMS.smoothFact = [1 5 11]; % to smooth the openings display and analyses
+PARAMS.smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
 
 
 % Import the data table associated
@@ -76,24 +76,24 @@ simpleTracksRT = rtTracks(n_tracks, simpleTracks, PARAMS);
 %% %%%%%%%%%%%%%%%% 2D only %%%%%%%%%%%%%%%%
 
 % Calculate distance between the 2 extremities
-openingRT = InterExtremDist(simpleTracksRT,smoothFact);
+openingRT = InterExtremDist(simpleTracksRT,PARAMS.smoothFact);
 
 % Calculate the opening change
-openingRTspeed = [-diff(openingRT) ; NaN(1,numel(smoothFact))]/PARAMS.md.frameInterval;
+openingRTspeed = [-diff(openingRT) ; NaN(1,numel(PARAMS.smoothFact))]/PARAMS.md.frameInterval;
 
 % Calculate advanced filtering
-openingRTadv = advancedFilter(simpleTracksRT, smoothFactAdv, PARAMS);
+openingRTadv = advancedFilter(simpleTracksRT, PARAMS.smoothFactAdv, PARAMS);
 % => first field = distance ; second field = speed;
 
 % Set timecourse
 timeCourse = simpleTracksRT{1}.time;
 
 % Preping the legends
-for smoothing = 1: numel(smoothFact)
-    if smoothFact(smoothing)==1
+for smoothing = 1: numel(PARAMS.smoothFact)
+    if PARAMS.smoothFact(smoothing)==1
         legs{smoothing} = 'No smooth';
     else
-        legs{smoothing} = sprintf('Smooth over %d tp',smoothFact(smoothing));
+        legs{smoothing} = sprintf('Smooth over %d tp',PARAMS.smoothFact(smoothing));
     end
 end
 
@@ -155,21 +155,21 @@ saveas(gcf,sprintf('%s_fluoAnalysis',...
 %
 % dispOverlayDistVsSpeed(timeCourse, openingRT, openingRTspeed);
 %
-% saveas(gcf,sprintf('%s_originalOverlay', [path, filesep, PARAMS.fileName], smoothFactAdv));
+% saveas(gcf,sprintf('%s_originalOverlay', [path, filesep, PARAMS.fileName], PARAMS.smoothFactAdv));
     
 %% Display overlayed closing speed and closing distance for advanced filtering
 
 figure;
 
-dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, PARAMS);
+dispOverlayAdvanced(timeCourse, openingRTadv, PARAMS.smoothFactAdv, PARAMS);
 
 tempFig = gcf;
 saveas(tempFig,sprintf('%s_overlayAdvFiltering_%ddt',...
-    [PARAMS.fullPath, filesep, PARAMS.fileName], smoothFactAdv));
-% saveas(gcf,sprintf('%s_overlayAdvFiltering_%ddt.png',[path, filesep, PARAMS.fileName], smoothFactAdv));
+    [PARAMS.fullPath, filesep, PARAMS.fileName], PARAMS.smoothFactAdv));
+% saveas(gcf,sprintf('%s_overlayAdvFiltering_%ddt.png',[path, filesep, PARAMS.fileName], PARAMS.smoothFactAdv));
 % set(tempFig,'PaperOrientation','landscape');
 % print(tempFig, '-fillpage', '-dpdf','tempName')%, sprintf('%s_overlayAdvFiltering_%ddt.pdf',...
-% %     [path, filesep, PARAMS.fileName], smoothFactAdv));
+% %     [path, filesep, PARAMS.fileName], PARAMS.smoothFactAdv));
 
 
 %% Create output structure
