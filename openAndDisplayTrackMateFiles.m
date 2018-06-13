@@ -54,9 +54,9 @@ num_lines = 1;
 defaultans = {'2','min','micron'};
 answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
 
-md.frameInterval = str2double(answer{1});
-md.timeUnits = answer{2};
-md.spaceUnits = answer{3};
+PARAMS.md.frameInterval = str2double(answer{1});
+PARAMS.md.timeUnits = answer{2};
+PARAMS.md.spaceUnits = answer{3};
 
 % Recreate the tracks by spot ID 
 track_spot_IDs = recreate_IDs(n_tracks, track_names, edge_map);
@@ -64,11 +64,11 @@ track_spot_IDs = recreate_IDs(n_tracks, track_names, edge_map);
 % Reshape tracks into simpleTracks for simple handling
 clipZ = true;
 simpleTracks = reshapeTracks(n_tracks, track_spot_IDs,...
-    spot_ID_map, spot_table, clipZ, md);
+    spot_ID_map, spot_table, clipZ, PARAMS);
 
 % Reshape simpleTracks to incorporate the empty positions => and make it
 % Real Time ? 
-simpleTracksRT = rtTracks(n_tracks, simpleTracks, md);
+simpleTracksRT = rtTracks(n_tracks, simpleTracks, PARAMS);
 
 % Apply smoothing?
 
@@ -78,10 +78,10 @@ simpleTracksRT = rtTracks(n_tracks, simpleTracks, md);
 openingRT = InterExtremDist(simpleTracksRT,smoothFact);
 
 % Calculate the opening change
-openingRTspeed = [-diff(openingRT) ; NaN(1,numel(smoothFact))]/md.frameInterval;
+openingRTspeed = [-diff(openingRT) ; NaN(1,numel(smoothFact))]/PARAMS.md.frameInterval;
 
 % Calculate advanced filtering
-openingRTadv = advancedFilter(simpleTracksRT, smoothFactAdv, md);
+openingRTadv = advancedFilter(simpleTracksRT, smoothFactAdv, PARAMS);
 % => first field = distance ; second field = speed;
 
 % Set timecourse
@@ -101,7 +101,7 @@ end
 
 %% Automated quantification of the cycle number
 % Based on the published stepfit method
-localMinIdx = findAndDisplayMin(openingRTadv.speed(:,3), md, PARAMS);
+localMinIdx = findAndDisplayMin(timeCourse, openingRTadv.speed(:,3), PARAMS);
 saveas(gcf,sprintf('%s_fluoAnalysis',...
     [path, filesep, fileName]));
 
@@ -110,17 +110,17 @@ saveas(gcf,sprintf('%s_fluoAnalysis',...
 figure;
 
 subplot(2,2,1); % Display the opening size
-dispOpeningDia(openingRT, timeCourse, md, legs); 
+dispOpeningDia(openingRT, timeCourse, PARAMS, legs); 
 
 subplot(2,2,2); % Display the tracks
-dispTracks(n_tracks, simpleTracksRT, track_names, md);
+dispTracks(n_tracks, simpleTracksRT, track_names, PARAMS);
 
 subplot(2,2,3);
-dispOpeningSpeed(openingRTspeed, timeCourse, md, legs);
+dispOpeningSpeed(openingRTspeed, timeCourse, PARAMS, legs);
 
 subplot(2,2,4);
 nbins = 20;
-dispOpeningHisto(openingRTspeed, md, legs, nbins);
+dispOpeningHisto(openingRTspeed, PARAMS, legs, nbins);
 
 saveas(gcf,sprintf('%s_morphoAnalysis',...
     [path, filesep, fileName]));
@@ -130,19 +130,19 @@ figure;
 
 subplot(2,2,1); % Maximum intensity 
 dispIntensities(n_tracks, timeCourse, simpleTracksRT, 'maxInt',...
-    'Max intensity', track_names, md);
+    'Max intensity', track_names, PARAMS);
 
 subplot(2,2,2); % Total intensity 
 dispIntensities(n_tracks, timeCourse, simpleTracksRT, 'totInt',...
-    'Total intensity', track_names, md);
+    'Total intensity', track_names, PARAMS);
 
 subplot(2,2,3); % Mean intensity 
 dispIntensities(n_tracks, timeCourse, simpleTracksRT, 'meanInt',...
-    'Mean intensity', track_names, md);
+    'Mean intensity', track_names, PARAMS);
 
 subplot(2,2,4); % Median intensity 
 dispIntensities(n_tracks, timeCourse, simpleTracksRT, 'medianInt',...
-    'Median intensity', track_names, md);
+    'Median intensity', track_names, PARAMS);
 
 saveas(gcf,sprintf('%s_fluoAnalysis',...
     [path, filesep, fileName]));
@@ -158,7 +158,7 @@ saveas(gcf,sprintf('%s_fluoAnalysis',...
 
 figure;
 
-dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, md);
+dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, PARAMS);
 
 tempFig = gcf;
 saveas(tempFig,sprintf('%s_overlayAdvFiltering_%ddt',...
@@ -179,7 +179,7 @@ save('outputAnalysis','outputAnalysis');
 end
 
 
-function localMinIdx = findAndDisplayMin(speed, md, PARAMS)
+function localMinIdx = findAndDisplayMin(timeCourse, speed, PARAMS)
 % Estimate automatically where the minima are in the speed curve
 
 [~, localMinIdx] = islocalmin(speed);
@@ -196,8 +196,8 @@ h{2} = plot(timeCourse(localMinIdx~=0),speed(localMinIdx~=0)-0.01, 'v', 'MarkerF
 h{3} = plot(timeCourse(localMinIdx~=0),localMinIdx(localMinIdx~=0),'v', 'MarkerFaceColor', localColors(2,:), 'MarkerEdgeColor', localColors(2,:)); % prominence of the minima
 grid on
 title(sprintf('Closing speed (%s)', PARAMS.fileName));
-ylabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
-xlabel( [ 'Time (' md.timeUnits ')' ] );
+ylabel( sprintf('Closing speed (%s/%s)', PARAMS.md.spaceUnits, PARAMS.md.timeUnits) );
+xlabel( [ 'Time (' PARAMS.md.timeUnits ')' ] );
 legend({'Speed', 'Local minimum', 'Prominence'});
 
 end
@@ -205,7 +205,7 @@ end
 
 
 function dispIntensities(n_tracks, timeCourse, simpleTracksRT, fieldToPlot,...
-    varName, track_names, md)
+    varName, track_names, PARAMS)
 
 hold on;
 for s = 1 : n_tracks
@@ -213,12 +213,12 @@ for s = 1 : n_tracks
     plot(timeCourse, simpleTracksRT{s}.(fieldToPlot), '.-');    
 end
 title(sprintf('%s against time', varName));
-xlabel( ['Time (' md.timeUnits ')'] )
+xlabel( ['Time (' PARAMS.md.timeUnits ')'] )
 ylabel(varName);
 legend(track_names, 'Location', 'eastoutside');
 end
 
-function [simpleTracksRT, maxTime] = rtTracks(n_tracks, simpleTracks, md)
+function [simpleTracksRT, maxTime] = rtTracks(n_tracks, simpleTracks, PARAMS)
 % Create and pad with nan the empty positions
 
 simpleTracksRT = simpleTracks;
@@ -239,7 +239,7 @@ for tk = 1 : n_tracks % for each track
         if ~frameExist(f) % if the frame doesn't exist in the original track
             % adapt time and frame
             emptyLine{1} = f-1;
-            emptyLine{2} = emptyLine{1}*md.frameInterval;
+            emptyLine{2} = emptyLine{1}*PARAMS.md.frameInterval;
             emptyFrameTable = [emptyFrameTable ; emptyLine];
         end
     end
@@ -256,7 +256,7 @@ end
 end
 
 function simpleTracks = reshapeTracks(n_tracks, track_spot_IDs,...
-    spot_ID_map, spot_table, clipZ, md)
+    spot_ID_map, spot_table, clipZ, PARAMS)
 % Reshape the tracks into a table to handle them more easily
 
 simpleTracks = {};
@@ -264,7 +264,7 @@ for s = 1 : n_tracks
     track_spot_ID = track_spot_IDs{ s };
     rows = cell2mat(spot_ID_map.values(num2cell(track_spot_ID)));
     frame = spot_table.FRAME(rows);
-    time = spot_table.FRAME(rows) .* md.frameInterval;
+    time = spot_table.FRAME(rows) .* PARAMS.md.frameInterval;
     xPos = spot_table.POSITION_X(rows);
     yPos = spot_table.POSITION_Y(rows);
     if ~clipZ
@@ -289,7 +289,7 @@ end
 
 end
 
-function dispTracks(n_tracks, simpleTracksRT, track_names, md)
+function dispTracks(n_tracks, simpleTracksRT, track_names, PARAMS)
 % Display the tracks of the 2 extremities (2D only for the moment)
 hold on
 for s = 1 : n_tracks
@@ -301,8 +301,8 @@ for s = 1 : n_tracks
 end
 
 title('Trajectories of the extremities');
-ylabel( [ 'Y (' md.spaceUnits ')' ] )
-xlabel( [ 'X (' md.spaceUnits ')' ] )
+ylabel( [ 'Y (' PARAMS.md.spaceUnits ')' ] )
+xlabel( [ 'X (' PARAMS.md.spaceUnits ')' ] )
 axis equal
 legend toggle
 end
@@ -320,7 +320,7 @@ for s = 1 : n_tracks
 end
 end
 
-function openingRTadv = advancedFilter(simpleTracksRT, smoothFactAdv, md)
+function openingRTadv = advancedFilter(simpleTracksRT, smoothFactAdv, PARAMS)
 
 % Calculate distance with every filters
 diam = InterExtremDist(simpleTracksRT,[1 smoothFactAdv]); % => no smooth and single smooth
@@ -330,7 +330,7 @@ diam = diam .* ~isnan(diam(:,1));
 diam(diam==0) = nan;
 
 % Calculate speed with every filters
-speed = ([-diff(diam) ; NaN(1,size(diam,2))]/md.frameInterval);
+speed = ([-diff(diam) ; NaN(1,size(diam,2))]/PARAMS.md.frameInterval);
 
 % merge into main structure
 openingRTadv.distance = diam;
@@ -366,30 +366,30 @@ opening(opening==0) = nan;
 
 end
 
-function dispOpeningDia(openingRT, timeCourse, md, legs)
+function dispOpeningDia(openingRT, timeCourse, PARAMS, legs)
 % Display the size of the surface diameter (between the extremities)
 
 plot(timeCourse, openingRT, '.-');
 title('Distance between extremities');
-xlabel( ['Time (' md.timeUnits ')'] );
-ylabel( ['Distance (' md.spaceUnits ')' ]);
+xlabel( ['Time (' PARAMS.md.timeUnits ')'] );
+ylabel( ['Distance (' PARAMS.md.spaceUnits ')' ]);
 legend(legs)
 
 end
 
-function dispOpeningSpeed(openingRTspeed, timeCourse, md, legs)
+function dispOpeningSpeed(openingRTspeed, timeCourse, PARAMS, legs)
 % Display the speed at which the surface is closing
 
 hold on
 plot(timeCourse, openingRTspeed, '.-');
 title('Closing speed');
-xlabel( sprintf('Time (%s)', md.timeUnits) ); 
-ylabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
+xlabel( sprintf('Time (%s)', PARAMS.md.timeUnits) ); 
+ylabel( sprintf('Closing speed (%s/%s)', PARAMS.md.spaceUnits, PARAMS.md.timeUnits) );
 legend(legs)
 
 end
 
-function dispOpeningHisto(openingRTspeed, md, legs, nbins)
+function dispOpeningHisto(openingRTspeed, PARAMS, legs, nbins)
 % Display of the opening speeds as an histogram
 
 lineColors = lines(numel(legs));
@@ -411,7 +411,7 @@ for pop = 1:numel(legs)
 end
 
 title('Distribution of the closing speeds');
-xlabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
+xlabel( sprintf('Closing speed (%s/%s)', PARAMS.md.spaceUnits, PARAMS.md.timeUnits) );
 ylabel('N'); 
 legend(legs);
 legend boxoff;
@@ -429,22 +429,22 @@ plot(timeCourse,openingRTspeed);
 
 end
 
-function dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, md)
+function dispOverlayAdvanced(timeCourse, openingRTadv, smoothFactAdv, PARAMS)
 % Display overlayed closing speed and closing distance for advanced filtering
 
 hold on
 
 yyaxis left
 plot(timeCourse,openingRTadv.distance);
-ylabel( sprintf('Diameter (%s)', md.spaceUnits) );
+ylabel( sprintf('Diameter (%s)', PARAMS.md.spaceUnits) );
 
 yyaxis right
 plot(timeCourse,openingRTadv.speed);
-ylabel( sprintf('Closing speed (%s/%s)', md.spaceUnits, md.timeUnits) );
+ylabel( sprintf('Closing speed (%s/%s)', PARAMS.md.spaceUnits, PARAMS.md.timeUnits) );
 
 title(sprintf('Advanced filtering (twice over %ddt <=> %0.1fmin)',...
-    smoothFactAdv,smoothFactAdv*md.frameInterval));
-xlabel( sprintf('Time (%s)', md.timeUnits) ); 
+    smoothFactAdv,smoothFactAdv*PARAMS.md.frameInterval));
+xlabel( sprintf('Time (%s)', PARAMS.md.timeUnits) ); 
 
 legend([openingRTadv.dLegend, openingRTadv.sLegend],'Location','EastOutside')
 
