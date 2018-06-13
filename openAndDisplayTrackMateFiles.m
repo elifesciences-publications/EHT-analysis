@@ -22,33 +22,8 @@ clear
 % PARAMS
 PARAMS.scriptVersion = 'v1.3';
 
-filePathSpotFeat = uipickfiles('num',1 ,'Prompt', 'Please select the path to the whole dataset');
-% filePathSpotFeat = ...
-%     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
-[path,PARAMS.fileName,~] = fileparts(filePathSpotFeat{1});
-PARAMS.fullPath = [path filesep PARAMS.fileName];
-mkdir(PARAMS.fullPath);
-cd(PARAMS.fullPath);
 
-% Use a smoothing factor in the display => Always keep 1 as the first value
-% to keep the raw data
-PARAMS.smoothFact = [1 5 11]; % to smooth the openings display and analyses
-PARAMS.smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
-
-
-% Import the data table associated
-[ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{1} );
-edge_map = trackmateEdges( filePathSpotFeat{1} );
-track_names = edge_map.keys;
-
-n_tracks = numel(track_names);
-if n_tracks>2
-    fprintf('WARNING: %d trajectories detected. Stopping the analysis.\n',...
-        n_tracks);
-    return
-end
-
-% Double check some parameters of the acquisition
+%% Double check some parameters of the acquisition
 prompt = {'Enter frame interval:', 'Enter time unit:', 'Enter space unit:'};
 dlg_title = 'Check inputs';
 num_lines = 1;
@@ -59,7 +34,68 @@ PARAMS.md.frameInterval = str2double(answer{1});
 PARAMS.md.timeUnits = answer{2};
 PARAMS.md.spaceUnits = answer{3};
 
-% Recreate the tracks by spot ID 
+%% Select xml files of interest
+filePathSpotFeat = uipickfiles('Prompt', 'Please select the path to the .xml track files (keep same imaging conditions!)');
+% filePathSpotFeat = ...
+%     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
+
+
+%% Use a smoothing factor in the display => Always keep 1 as the first value
+% to keep the raw data
+PARAMS.smoothFact = [1 5 11]; % to smooth the openings display and analyses
+PARAMS.smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
+
+for dataFile = 1:length(filePathSpotFeat)
+    
+    % Do the analysis for each datafile
+    [path,PARAMS.fileName,~] = fileparts(filePathSpotFeat{dataFile});
+    PARAMS.fullPath = [path filesep PARAMS.fileName];
+    mkdir(PARAMS.fullPath);
+    cd(PARAMS.fullPath);
+    fprintf('Processing xml file: %s\n', PARAMS.fileName);
+    
+    % Import the data table associated
+    [ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{dataFile} );
+    edge_map = trackmateEdges( filePathSpotFeat{dataFile} );
+    track_names = edge_map.keys;
+    
+
+    
+    analysisTracks = analyseTracks(PARAMS, spot_table, spot_ID_map, track_names, edge_map);
+    
+    displayAnalysis(PARAMS, analysisTracks, track_names);
+    
+    
+    
+    %% Create and save output structure
+    outputAnalysis = {};
+    outputAnalysis.dataTable = table(analysisTracks.timeCourse,...
+        analysisTracks.openingRTadv.distance(:,3), ...
+        analysisTracks.openingRTadv.speed(:,3),...
+        analysisTracks.localMinIdx);
+    outputAnalysis.dataTable.Properties.VariableNames = {'timeCourse' 'distanceSmoothed' 'speedSmoothed' 'localMinsP'};
+    outputAnalysis.PARAMS = PARAMS;
+    
+    save('outputAnalysis','outputAnalysis');
+    
+    close all
+    
+end
+
+end
+
+
+
+function analysisTracks = analyseTracks(PARAMS, spot_table, spot_ID_map, track_names, edge_map)
+
+% Check that there are only 2 tracks
+n_tracks = numel(track_names);
+if n_tracks>2
+    error('WARNING: %d trajectories detected. Stopping the analysis.\n',...
+        n_tracks);
+end
+
+% Recreate the tracks by spot ID
 track_spot_IDs = recreate_IDs(n_tracks, track_names, edge_map);
 
 % Reshape tracks into simpleTracks for simple handling
@@ -88,6 +124,33 @@ openingRTadv = advancedFilter(simpleTracksRT, PARAMS.smoothFactAdv, PARAMS);
 % Set timecourse
 timeCourse = simpleTracksRT{1}.time;
 
+% Automated detection of local minima
+localMinIdx = findLocalMin(openingRTadv.speed(:,3));
+
+% Packing analysis into a single structure
+analysisTracks = {};
+analysisTracks.simpleTracksRT = simpleTracksRT;
+analysisTracks.openingRT = openingRT;
+analysisTracks.openingRTspeed = openingRTspeed;
+analysisTracks.openingRTadv = openingRTadv;
+analysisTracks.localMinIdx = localMinIdx;
+analysisTracks.timeCourse = timeCourse;
+
+end
+
+
+function displayAnalysis(PARAMS, analysisTracks, track_names)
+
+% unpacking analysis into a separate structures
+simpleTracksRT = analysisTracks.simpleTracksRT;
+openingRT = analysisTracks.openingRT;
+openingRTspeed = analysisTracks.openingRTspeed;
+openingRTadv = analysisTracks.openingRTadv;
+localMinIdx = analysisTracks.localMinIdx;
+timeCourse = analysisTracks.timeCourse;
+
+n_tracks = numel(track_names);
+
 % Preping the legends
 for smoothing = 1: numel(PARAMS.smoothFact)
     if PARAMS.smoothFact(smoothing)==1
@@ -96,17 +159,6 @@ for smoothing = 1: numel(PARAMS.smoothFact)
         legs{smoothing} = sprintf('Smooth over %d tp',PARAMS.smoothFact(smoothing));
     end
 end
-
-
-
-
-%% Automated quantification of the cycle number
-% Based on the published stepfit method
-localMinIdx = findAndDisplayMin(timeCourse, openingRTadv.speed(:,3), PARAMS);
-saveas(gcf,sprintf('%s_localMinsP',...
-    [PARAMS.fullPath, filesep, PARAMS.fileName]));
-saveas(gcf,sprintf('%s_localMinsP.png',...
-    [PARAMS.fullPath, filesep, PARAMS.fileName]));
 
 %% tracks and surface size
 % Display the distance between the 2 extremities and associate tracks
@@ -171,23 +223,28 @@ saveas(tempFig,sprintf('%s_overlayAdvFiltering_%ddt',...
 % print(tempFig, '-fillpage', '-dpdf','tempName')%, sprintf('%s_overlayAdvFiltering_%ddt.pdf',...
 % %     [path, filesep, PARAMS.fileName], PARAMS.smoothFactAdv));
 
+%% Display local minimums
+dispLocalMin(timeCourse, openingRTadv.speed(:,3), localMinIdx, PARAMS);
+saveas(gcf,sprintf('%s_localMinsP',...
+    [PARAMS.fullPath, filesep, PARAMS.fileName]));
+saveas(gcf,sprintf('%s_localMinsP.png',...
+    [PARAMS.fullPath, filesep, PARAMS.fileName]));
 
-%% Create output structure
-outputAnalysis.dataTable = table(timeCourse, openingRTadv.distance(:,3), openingRTadv.speed(:,3), localMinIdx);
-outputAnalysis.dataTable.Properties.VariableNames = {'timeCourse' 'distanceSmoothed' 'speedSmoothed' 'localMinsP'};
-outputAnalysis.PARAMS = PARAMS;
-
-save('outputAnalysis','outputAnalysis');
 
 end
 
 
-function localMinIdx = findAndDisplayMin(timeCourse, speed, PARAMS)
+function localMinIdx = findLocalMin(speed)
 % Estimate automatically where the minima are in the speed curve
 
 [~, localMinIdx] = islocalmin(speed);
 % [~, localMinIdx] = islocalmin(speed,'MinProminence',0.05); % use a
 % treshold on minima prominence
+
+end
+
+function dispLocalMin(timeCourse, speed, localMinIdx, PARAMS)
+% Display local minima in curve
 
 localColors = lines(2);
 
