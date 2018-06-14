@@ -22,6 +22,14 @@ clear
 % PARAMS
 PARAMS.scriptVersion = 'v1.3';
 
+% Use a smoothing factor in the display => Always keep 1 as the first value
+% to keep the raw data
+PARAMS.smoothFact = [1 5 11]; % to smooth the openings display and analyses
+PARAMS.smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
+
+% Minimum prominence value before local minimum rejection 
+PARAMS.promThresh = 0.01; % Minimum prominence value before local minimum rejection 
+
 
 %% Double check some parameters of the acquisition
 prompt = {'Enter frame interval:', 'Enter time unit:', 'Enter space unit:'};
@@ -34,16 +42,11 @@ PARAMS.md.frameInterval = str2double(answer{1});
 PARAMS.md.timeUnits = answer{2};
 PARAMS.md.spaceUnits = answer{3};
 
-%% Select xml files of interest
+% Select xml files of interest
 filePathSpotFeat = uipickfiles('Prompt', 'Please select the path to the .xml track files (keep same imaging conditions!)');
 % filePathSpotFeat = ...
 %     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
 
-
-%% Use a smoothing factor in the display => Always keep 1 as the first value
-% to keep the raw data
-PARAMS.smoothFact = [1 5 11]; % to smooth the openings display and analyses
-PARAMS.smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
 
 for dataFile = 1:length(filePathSpotFeat)
     
@@ -125,7 +128,7 @@ openingRTadv = advancedFilter(simpleTracksRT, PARAMS.smoothFactAdv, PARAMS);
 timeCourse = simpleTracksRT{1}.time;
 
 % Automated detection of local minima
-localMinIdx = findLocalMin(openingRTadv.speed(:,3));
+[localMinIdx, localMinIdxRej] = findLocalMin(openingRTadv.speed(:,3), PARAMS);
 
 % Packing analysis into a single structure
 analysisTracks = {};
@@ -134,6 +137,7 @@ analysisTracks.openingRT = openingRT;
 analysisTracks.openingRTspeed = openingRTspeed;
 analysisTracks.openingRTadv = openingRTadv;
 analysisTracks.localMinIdx = localMinIdx;
+analysisTracks.localMinIdxRej = localMinIdxRej;
 analysisTracks.timeCourse = timeCourse;
 
 end
@@ -147,6 +151,7 @@ openingRT = analysisTracks.openingRT;
 openingRTspeed = analysisTracks.openingRTspeed;
 openingRTadv = analysisTracks.openingRTadv;
 localMinIdx = analysisTracks.localMinIdx;
+localMinIdxRej = analysisTracks.localMinIdxRej;
 timeCourse = analysisTracks.timeCourse;
 
 n_tracks = numel(track_names);
@@ -224,26 +229,30 @@ saveas(tempFig,sprintf('%s_overlayAdvFiltering_%ddt',...
 % %     [path, filesep, PARAMS.fileName], PARAMS.smoothFactAdv));
 
 %% Display local minimums
-dispLocalMin(timeCourse, openingRTadv.speed(:,3), localMinIdx, PARAMS);
-saveas(gcf,sprintf('%s_localMinsP',...
+dispLocalMin(timeCourse, openingRTadv.speed(:,3), localMinIdx, localMinIdxRej, PARAMS);
+tempFig = gcf;
+saveas(tempFig,sprintf('%s_localMinsP',...
     [PARAMS.fullPath, filesep, PARAMS.fileName]));
-saveas(gcf,sprintf('%s_localMinsP.png',...
+saveas(tempFig,sprintf('%s_localMinsP.png',...
     [PARAMS.fullPath, filesep, PARAMS.fileName]));
 
 
 end
 
 
-function localMinIdx = findLocalMin(speed)
+function [localMinIdx, localMinIdxRej] = findLocalMin(speed, PARAMS)
 % Estimate automatically where the minima are in the speed curve
 
 [~, localMinIdx] = islocalmin(speed);
-% [~, localMinIdx] = islocalmin(speed,'MinProminence',0.05); % use a
+% [~, localMinIdx] = islocalmin(speed,'MinProminence',PARAMS.promThresh); % use a
 % treshold on minima prominence
+localMinIdxRej = localMinIdx;
+localMinIdxRej(localMinIdxRej>PARAMS.promThresh) = 0;
+localMinIdx = localMinIdx - localMinIdxRej;
 
 end
 
-function dispLocalMin(timeCourse, speed, localMinIdx, PARAMS)
+function dispLocalMin(timeCourse, speed, localMinIdx, localMinIdxRej, PARAMS)
 % Display local minima in curve
 
 localColors = lines(2);
@@ -252,13 +261,19 @@ localColors = lines(2);
 figure
 hold on
 h{1} = plot(timeCourse, speed, '.-', 'LineWidth',1 , 'Color', localColors(1,:)); % speed curve
-h{2} = plot(timeCourse(localMinIdx~=0),speed(localMinIdx~=0)-0.01, 'v', 'MarkerFaceColor', [0,0.5,0], 'MarkerEdgeColor', [0,0.5,0]); % minima on the speed curve
-h{3} = plot(timeCourse(localMinIdx~=0),localMinIdx(localMinIdx~=0),'v', 'MarkerFaceColor', localColors(2,:), 'MarkerEdgeColor', localColors(2,:)); % prominence of the minima
+h{2} = plot(timeCourse(localMinIdx~=0),speed(localMinIdx~=0)-0.01,...
+    'v', 'MarkerFaceColor', [0,0.5,0], 'MarkerEdgeColor', [0,0.5,0]); % minima on the speed curve
+h{3} = plot(timeCourse(localMinIdx~=0),localMinIdx(localMinIdx~=0),...
+    'v', 'MarkerFaceColor', localColors(2,:), 'MarkerEdgeColor', localColors(2,:)); % prominence of the minima
+h{4} = plot(timeCourse(localMinIdxRej~=0),speed(localMinIdxRej~=0)-0.01,...
+    'v', 'MarkerEdgeColor', [0,0.5,0]); % minima on the speed curve
+h{5} = plot(timeCourse(localMinIdxRej~=0),localMinIdx(localMinIdxRej~=0),...
+    'v', 'MarkerEdgeColor', localColors(2,:)); % prominence of the minima
 grid on
 title(sprintf('Closing speed (%s)', PARAMS.fileName));
 ylabel( sprintf('Closing speed (%s/%s)', PARAMS.md.spaceUnits, PARAMS.md.timeUnits) );
 xlabel( [ 'Time (' PARAMS.md.timeUnits ')' ] );
-legend({'Speed', 'Local minimum', 'Prominence'});
+legend({'Speed', 'Local minimum', 'Prominence', 'Rejected local min', 'Rejected Prominence'});
 
 end
 
