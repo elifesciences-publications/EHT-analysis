@@ -22,6 +22,11 @@ clear
 % PARAMS
 PARAMS.scriptVersion = 'v1.3';
 
+% Display and save the analysis
+PARAMS.doDisplays = 0; % Display the figures
+PARAMS.doSave = 1; % Save the analysis file
+
+
 % Use a smoothing factor in the display => Always keep 1 as the first value
 % to keep the raw data
 PARAMS.smoothFact = [1 5 11]; % to smooth the openings display and analyses
@@ -47,7 +52,7 @@ filePathSpotFeat = uipickfiles('Prompt', 'Please select the path to the .xml tra
 % filePathSpotFeat = ...
 %     {'/media/sherbert/Data/Projects/OG_projects/Project4_ML/movies/160328_projected/280316_extremities1and2.xml'};
 
-
+localMins = {};
 for dataFile = 1:length(filePathSpotFeat)
     
     % Do the analysis for each datafile
@@ -61,31 +66,38 @@ for dataFile = 1:length(filePathSpotFeat)
     [ spot_table, spot_ID_map ] = trackmateSpots( filePathSpotFeat{dataFile} );
     edge_map = trackmateEdges( filePathSpotFeat{dataFile} );
     track_names = edge_map.keys;
-    
-
-    
+       
+    % Do the analysis of this experiment
     analysisTracks = analyseTracks(PARAMS, spot_table, spot_ID_map, track_names, edge_map);
+   
+    % Display the analysis of this experiment
+    if PARAMS.doDisplays
+        displayAnalysis(PARAMS, analysisTracks, track_names);
+        close all
+    end
     
-    displayAnalysis(PARAMS, analysisTracks, track_names);
-    
-    
-    
-    %% Create and save output structure
-    outputAnalysis = {};
-    outputAnalysis.dataTable = table(analysisTracks.timeCourse,...
-        analysisTracks.openingRTadv.distance(:,3), ...
-        analysisTracks.openingRTadv.speed(:,3),...
-        analysisTracks.localMinIdx);
-    outputAnalysis.dataTable.Properties.VariableNames = {'timeCourse' 'distanceSmoothed' 'speedSmoothed' 'localMinsP'};
-    outputAnalysis.PARAMS = PARAMS;
-    
-    save('outputAnalysis','outputAnalysis');
-    
-    close all
+    % Create and save output structure
+    if PARAMS.doSave % Save the analysis file
+        
+        outputAnalysis = {};
+        outputAnalysis.dataTable = table(analysisTracks.timeCourse,...
+            analysisTracks.openingRTadv.distance(:,3), ...
+            analysisTracks.openingRTadv.speed(:,3),...
+            analysisTracks.localMinIdx);
+
+        outputAnalysis.dataTable.Properties.VariableNames = {'timeCourse' 'distanceSmoothed'...
+            'speedSmoothed' 'localMinsP'};
+        outputAnalysis.PARAMS = PARAMS;
+        
+        save('outputAnalysis','outputAnalysis');
+    end 
     
 end
 
+
+
 end
+
 
 
 
@@ -129,6 +141,7 @@ timeCourse = simpleTracksRT{1}.time;
 
 % Automated detection of local minima
 [localMinIdx, localMinIdxRej] = findLocalMin(openingRTadv.speed(:,3), PARAMS);
+
 
 % Packing analysis into a single structure
 analysisTracks = {};
