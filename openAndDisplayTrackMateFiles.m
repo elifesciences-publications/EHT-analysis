@@ -23,14 +23,14 @@ clear
 PARAMS.scriptVersion = 'v1.3';
 
 % Display and save the analysis
-PARAMS.doDisplays = 0; % Display the figures
+PARAMS.doDisplays = 1; % Display the figures
 PARAMS.doSave = 1; % Save the analysis file
 
 
 % Use a smoothing factor in the display => Always keep 1 as the first value
 % to keep the raw data
 PARAMS.smoothFact = [1 5 11]; % to smooth the openings display and analyses
-PARAMS.smoothFactAdv = 11; % to apply and advanced smoothing => Change to the number of steps to smooth onto
+PARAMS.smoothFactAdv = 5; % to apply and advanced smoothing => Change to the number of steps to smooth onto
 
 % Minimum prominence value before local minimum rejection 
 PARAMS.promThresh = 0.01; % Minimum prominence value before local minimum rejection 
