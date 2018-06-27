@@ -1,7 +1,8 @@
 %{
 
-Displays results from several experiments combined together.
-version 180XXX v0.1
+Displays results from several experiments combined together and saves them
+in an external file (MATLAB table format)
+version 180627 v1.0
 
 S. Herbert sherbert@pasteur.fr
 
@@ -13,7 +14,7 @@ function displayOverall()
 clear
 
 % PARAMS
-PARAMS.scriptVersion = 'v0.1';
+PARAMS.scriptVersion = 'v1.0';
 
 % Load individual experimental files
 filePathAna = uipickfiles('Prompt', 'Please select the path to the individual analysis files');
